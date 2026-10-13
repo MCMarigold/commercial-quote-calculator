@@ -186,6 +186,7 @@ var PU=stats(COMPS.filter(function(c){return c.units&&c.type==="mf"}).map(functi
 var FIVE_OFF=0.10,FIVE_CUT=0.25,SOLO=4.5; /* up to 4.5 inspector-hours = 1 inspector */
 function r25(v){return Math.round(v/25)*25}
 function rh(v){return Math.round(v*2)/2}
+function psf(v){return "$"+v.toFixed(2)+"/sf"}
 function money(v){return "$"+Math.round(v).toLocaleString("en-US")}
 function calc(i){
   var o={ok:i.sf>0,warn:[]};
@@ -251,6 +252,7 @@ function summary(i,o){
   if(o.five)t+="Full inspection base: "+money(o.full)+", less 5-point adjustment ($0.10/sf): -"+money(o.disc)+"\n";
   t+="Base inspection"+(o.five?" (5-point)":"")+": "+money(o.base)+"\n";
   o.lines.forEach(function(l){t+=l.n+": "+rangeTxt(l.lo,l.hi)+"\n"});
+  t+="Base price per sq ft: "+psf(o.base/i.sf)+"\n";
   t+="Suggested total: "+money(o.total)+" (range "+money(o.totLo)+" to "+money(o.totHi)+")\n";
   t+="Recommended crew: "+o.crew+" inspector"+(o.crew>1?"s":"")+", about "+o.dur.typ+" hrs on site ("+o.ph.typ+" inspector-hours)\n";
   t+="Starting number from 5 full inspections in 2026. Confirm with Blake or Dan.";
@@ -271,6 +273,7 @@ function render(){
   if(o.five){h+='<tr><td>Full inspection base</td><td class="n">'+money(o.full)+'</td></tr>';
     h+='<tr><td>5-point adjustment ($0.10 &times; '+i.sf.toLocaleString("en-US")+' sf)</td><td class="n">&minus;'+money(o.disc)+'</td></tr>'}
   h+='<tr><td>Base inspection'+(o.five?', 5-point':'')+' (suggested)</td><td class="n">'+money(o.base)+'</td></tr>';
+  h+='<tr><td>Base price per sq ft<br><span class="hint">Past full inspections: '+psf(PSF.min)+' to '+psf(PSF.max)+', middle '+psf(PSF.med)+'</span></td><td class="n">'+psf(o.base/i.sf)+'</td></tr>';
   o.lines.forEach(function(l){h+='<tr><td>'+l.n+'</td><td class="n">'+rangeTxt(l.lo,l.hi)+'</td></tr>'});
   h+='<tr class="tot"><td>Suggested total</td><td class="n">'+money(o.total)+'</td></tr></table></div>';
   h+='<h2 style="margin-top:16px">Recommended crew and time</h2><div class="stats">';
