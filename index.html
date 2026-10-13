@@ -158,7 +158,7 @@ ul.notes li{margin-bottom:4px}
       <li>Crew size is 2 by default, since all 5 full inspections used 2 or 3 inspectors. It goes to 3 at 8 or more apartment units (the only 8-unit job used 3) or when the estimate reaches 13 inspector-hours (the 3-inspector job took 13.5). That rule rests on one job, so treat it as a suggestion.</li>
       <li>Duration and inspector-hours include time spent on add-ons, since the export does not separate it.</li>
       <li>Scope was read from the order notes. Pine City was not labeled full, so it is included on the assumption that a whole-building inspection was done.</li>
-      <li>A 5-point inspection takes 15 minutes per 1,000 sq ft off the full inspection's time on site, for every inspector on the full crew. The crew is then resized from the remaining inspector-hours: up to 4 is 1 inspector, up to 8 is 2, more than 8 is 3.</li>
+      <li>A 5-point inspection takes 15 minutes per 1,000 sq ft off the full inspection's total inspector-hours. The crew is then resized from the remaining inspector-hours: up to 4 is 1 inspector, up to 8 is 2, more than 8 is 3, but never more than a full inspection of the same building would use.</li>
       <li>A 5-point inspection is priced as the full inspection quote minus $0.10 per sq ft. The range shown is the full inspection range minus the same amount.</li>
       <li>This is a starting number for the team to sanity check. Outside 3,000 to 8,000 sf or 4 to 8 units, there are no full inspections to compare against, and the page says so.</li>
     </ul>
@@ -219,12 +219,12 @@ function calc(i){
   o.crew=((i.type==="mf"&&i.units>=8)||o.ph.typ>=13)?3:2;
   o.fullDur=rh(o.ph.typ/o.crew);o.cut=0;
   if(o.five){
-    /* 5-point: take 15 min per 1,000 sq ft off the full crew's time on site, then re-crew:
+    /* 5-point: take 15 min per 1,000 sq ft off total inspector-hours, then re-crew:
        up to 4 inspector-hours = 1 inspector, up to 8 = 2, more = 3 */
     o.cut=FIVE_CUT*i.sf/1000;
-    var full=o.crew,lab=function(h){return rh(Math.max(1,h-o.cut*full))};
+    var lab=function(h){return rh(Math.max(1,h-o.cut))};
     o.ph={a:o.ph.a,b:o.ph.b,typ:lab(o.ph.typ),lo:lab(o.ph.lo),hi:lab(o.ph.hi)};
-    o.crew=o.ph.typ<=4?1:o.ph.typ<=8?2:3;
+    o.crew=Math.min(o.crew,o.ph.typ<=4?1:o.ph.typ<=8?2:3);
     o.alt=o.crew===2?1:2;
   }else o.alt=o.crew===2?3:2;
   o.dur={typ:rh(o.ph.typ/o.crew),lo:rh(o.ph.lo/o.crew),hi:rh(o.ph.hi/o.crew),alt:rh(o.ph.typ/o.alt)};
@@ -233,7 +233,7 @@ function calc(i){
   if(i.type==="mf"&&i.units>0&&(i.units<4||i.units>8))o.warn.push("Full inspections on record cover 4 to 8 units. The unit estimate is a stretch at "+i.units+" units.");
   if(i.type==="mixed")o.warn.push("Unit count is not used for mixed-use or commercial buildings. The closest job, Osseo (3 retail spaces and 1 apartment), came to $563 per unit, well above the apartment range, so unit pricing does not carry over.");
   if(i.type==="mf"&&!(i.units>0))o.warn.push("No unit count entered, so this uses square feet only. Adding units usually tightens the estimate for apartment buildings.");
-  if(o.five)o.warn.push("5-point time is the full inspection estimate less 15 minutes per 1,000 sq ft, and crew size follows the 5-point rule (1 inspector up to 4 inspector-hours, 2 up to 8). There are no 5-point jobs on record yet to check it against.");
+  if(o.five)o.warn.push("5-point time is the full inspection's inspector-hours less 15 minutes per 1,000 sq ft, and crew size follows the 5-point rule (1 inspector up to 4 inspector-hours, 2 up to 8). There are no 5-point jobs on record yet to check it against.");
   if(i.drone)o.warn.push("Drone roof inspection is not priced yet and is not in the total.");
   return o;
 }
@@ -275,7 +275,7 @@ function render(){
   o.lines.forEach(function(l){h+='<tr><td>'+l.n+'</td><td class="n">'+rangeTxt(l.lo,l.hi)+'</td></tr>'});
   h+='<tr class="tot"><td>Suggested total</td><td class="n">'+money(o.total)+'</td></tr></table></div>';
   h+='<h2 style="margin-top:16px">Recommended crew and time</h2><div class="stats">';
-  h+='<div class="stat"><div class="k">Inspectors</div><div class="v">'+o.crew+'</div><div class="s">'+(o.five?'5-point: 1 up to 4 inspector-hrs, 2 up to 8, 3 above':o.crew===3?'8+ units or 13+ inspector-hrs':'all 5 jobs used 2 or 3')+'</div></div>';
+  h+='<div class="stat"><div class="k">Inspectors</div><div class="v">'+o.crew+'</div><div class="s">'+(o.five?'5-point: 1 up to 4 inspector-hrs, 2 up to 8, never more than full':o.crew===3?'8+ units or 13+ inspector-hrs':'all 5 jobs used 2 or 3')+'</div></div>';
   h+='<div class="stat"><div class="k">Duration on site</div><div class="v">~'+o.dur.typ+' hrs</div><div class="s">'+o.dur.lo+' to '+o.dur.hi+' hrs'+(o.five?'<br>full inspection: ~'+o.fullDur+' hrs':'')+'</div></div>';
   h+='<div class="stat"><div class="k">Inspector-hours</div><div class="v">~'+o.ph.typ+'</div><div class="s">'+o.ph.lo+' to '+o.ph.hi+' total</div></div>';
   h+='</div>';
