@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Full Inspection Quote Calculator</title>
+<title>Commercial Inspection Quote Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;700&display=swap">
@@ -71,14 +71,22 @@ ul.notes li{margin-bottom:4px}
 </style>
 
 <div class="wrap">
-  <h1>Full Inspection Quote Calculator</h1>
-  <p class="sub">A starting quote for full commercial inspections, built from the 5 full inspections done in 2026. Enter the building details and the quote updates as you type. Section and 5-point pricing will be added later.</p>
+  <h1>Commercial Inspection Quote Calculator</h1>
+  <p class="sub">A starting quote for full and 5-point commercial inspections, built from the 5 full inspections done in 2026. Enter the building details and the quote updates as you type. Section pricing will be added later.</p>
 
   <div class="grid">
     <div>
       <div class="card">
         <h2>Building</h2>
         <p class="example">The values below are an example. Replace them with the building you are quoting.</p>
+        <div class="field">
+          <label for="scope">Inspection type</label>
+          <select id="scope">
+            <option value="full" selected>Full inspection</option>
+            <option value="five">5-point inspection</option>
+          </select>
+          <span class="hint" id="scopeHint"></span>
+        </div>
         <div class="field">
           <label for="sf">Square feet</label>
           <input id="sf" type="number" inputmode="numeric" min="0" step="100" value="5600">
@@ -100,7 +108,7 @@ ul.notes li{margin-bottom:4px}
       <div class="card">
         <h2>Add-ons</h2>
         <div class="addon">
-          <input id="a_sewer" type="checkbox" checked aria-labelledby="l_sewer">
+          <input id="a_sewer" type="checkbox" aria-labelledby="l_sewer">
           <div><span id="l_sewer" class="lbl">Sewer scope</span>
             <small>Seen at $200 up to 5,600 sf and $300 from 5,788 sf. 7 jobs.</small>
             <div class="extra"><label for="extra">Extra sewer accesses</label><input id="extra" type="number" min="0" step="1" value="0"><span class="hint">$100 each</span></div>
@@ -150,6 +158,7 @@ ul.notes li{margin-bottom:4px}
       <li>Crew size is 2 by default, since all 5 full inspections used 2 or 3 inspectors. It goes to 3 at 8 or more apartment units (the only 8-unit job used 3) or when the estimate reaches 13 inspector-hours (the 3-inspector job took 13.5). That rule rests on one job, so treat it as a suggestion.</li>
       <li>Duration and inspector-hours include time spent on add-ons, since the export does not separate it.</li>
       <li>Scope was read from the order notes. Pine City was not labeled full, so it is included on the assumption that a whole-building inspection was done.</li>
+      <li>A 5-point inspection is priced as the full inspection quote minus $0.10 per sq ft. The range shown is the full inspection range minus the same amount.</li>
       <li>This is a starting number for the team to sanity check. Outside 3,000 to 8,000 sf or 4 to 8 units, there are no full inspections to compare against, and the page says so.</li>
     </ul>
   </details>
@@ -173,6 +182,7 @@ function ih(c){return c.hrs*c.insp}
 var PHK=stats(RJ.map(function(c){return ih(c)/c.sf*1000}));
 var PHU=stats(COMPS.filter(function(c){return c.units&&c.type==="mf"}).map(function(c){return ih(c)/c.units}));
 var PU=stats(COMPS.filter(function(c){return c.units&&c.type==="mf"}).map(function(c){return c.base/c.units}));
+var FIVE_OFF=0.10;
 function r25(v){return Math.round(v/25)*25}
 function rh(v){return Math.round(v*2)/2}
 function money(v){return "$"+Math.round(v).toLocaleString("en-US")}
@@ -183,9 +193,13 @@ function calc(i){
   var useUnits=i.type==="mf"&&i.units>0;
   if(useUnits)o.b={lo:PU.min*i.units,typ:PU.med*i.units,hi:PU.max*i.units};
   var typs=[o.a.typ].concat(o.b?[o.b.typ]:[]);
-  o.base=r25(typs.reduce(function(s,v){return s+v},0)/typs.length);
-  o.lo=Math.min(o.a.lo,o.b?o.b.lo:1e9);
-  o.hi=Math.max(o.a.hi,o.b?o.b.hi:0);
+  o.full=r25(typs.reduce(function(s,v){return s+v},0)/typs.length);
+  /* 5-point = full inspection quote minus $0.10 per sq ft */
+  o.five=i.scope==="five";
+  o.disc=o.five?FIVE_OFF*i.sf:0;
+  o.base=r25(o.full-o.disc);
+  o.lo=Math.min(o.a.lo,o.b?o.b.lo:1e9)-o.disc;
+  o.hi=Math.max(o.a.hi,o.b?o.b.hi:0)-o.disc;
   o.lines=[];
   var aLo=0,aHi=0;
   if(i.sewer){var s=i.sf<=5600?[200,200]:i.sf>=5788?[300,300]:[200,300];
@@ -208,6 +222,7 @@ function calc(i){
   if(i.type==="mf"&&i.units>0&&(i.units<4||i.units>8))o.warn.push("Full inspections on record cover 4 to 8 units. The unit estimate is a stretch at "+i.units+" units.");
   if(i.type==="mixed")o.warn.push("Unit count is not used for mixed-use or commercial buildings. The closest job, Osseo (3 retail spaces and 1 apartment), came to $563 per unit, well above the apartment range, so unit pricing does not carry over.");
   if(i.type==="mf"&&!(i.units>0))o.warn.push("No unit count entered, so this uses square feet only. Adding units usually tightens the estimate for apartment buildings.");
+  if(o.five)o.warn.push("Crew and time are based on full inspections. A 5-point inspection will likely take less time on site.");
   if(i.drone)o.warn.push("Drone roof inspection is not priced yet and is not in the total.");
   return o;
 }
@@ -215,15 +230,16 @@ function calc(i){
 
 var $=function(id){return document.getElementById(id)};
 function read(){
-  return{sf:parseFloat($("sf").value)||0,type:$("type").value,units:parseInt($("units").value,10)||0,
+  return{scope:$("scope").value,sf:parseFloat($("sf").value)||0,type:$("type").value,units:parseInt($("units").value,10)||0,
     sewer:$("a_sewer").checked,extra:Math.max(0,parseInt($("extra").value,10)||0),
     radon:$("a_radon").checked,lead:$("a_lead").checked,mold:$("a_mold").checked,drone:$("a_drone").checked};
 }
 function rangeTxt(lo,hi){return lo===hi?money(lo):money(lo)+" to "+money(hi)}
 function summary(i,o){
-  var t="Full commercial inspection, starting quote\n";
+  var t=(o.five?"5-point":"Full")+" commercial inspection, starting quote\n";
   t+=i.sf.toLocaleString("en-US")+" sf"+(i.type==="mf"&&i.units?", "+i.units+" units":"")+"\n";
-  t+="Base inspection: "+money(o.base)+"\n";
+  if(o.five)t+="Full inspection base: "+money(o.full)+", less 5-point adjustment ($0.10/sf): -"+money(o.disc)+"\n";
+  t+="Base inspection"+(o.five?" (5-point)":"")+": "+money(o.base)+"\n";
   o.lines.forEach(function(l){t+=l.n+": "+rangeTxt(l.lo,l.hi)+"\n"});
   t+="Suggested total: "+money(o.total)+" (range "+money(o.totLo)+" to "+money(o.totHi)+")\n";
   t+="Recommended crew: "+o.crew+" inspectors, about "+o.dur.typ+" hrs on site ("+o.ph.typ+" inspector-hours)\n";
@@ -233,15 +249,18 @@ function summary(i,o){
 var lastText="";
 function render(){
   var i=read(),o=calc(i);
+  $("scopeHint").textContent=i.scope==="five"?"Priced as the full inspection quote minus $0.10 per sq ft.":"Whole-building inspection.";
   $("units").disabled=i.type!=="mf";
   $("unitsHint").textContent=i.type==="mf"?"Used for apartment buildings. Leave blank to price by square feet only.":"Not used for mixed-use or commercial buildings.";
   var sw=i.sf<=0?"":(i.sf<=5600?"$200":i.sf>=5788?"$300":"$200 to $300");
   $("p_sewer").textContent=sw+(i.extra?" + $"+100*i.extra:"");
   var out=$("out");
   if(!o.ok){out.innerHTML='<h2>Quote</h2><p class="hint">Enter the square footage to see a quote.</p>';renderComps(0);return}
-  var h='<h2>Suggested quote</h2><div class="hero"><div class="k">Suggested total, base plus add-ons</div><div class="big">'+money(o.total)+'</div><div class="rng">Past jobs at this size ranged '+money(o.totLo)+' to '+money(o.totHi)+'</div></div>';
+  var h='<h2>Suggested quote</h2><div class="hero"><div class="k">Suggested total, base plus add-ons</div><div class="big">'+money(o.total)+'</div><div class="rng">'+(o.five?'Full inspection range at this size, less the 5-point adjustment: ':'Past jobs at this size ranged ')+money(o.totLo)+' to '+money(o.totHi)+'</div></div>';
   h+='<div class="scroll"><table><tr><th>Item</th><th class="n">Price</th></tr>';
-  h+='<tr><td>Base inspection (suggested)</td><td class="n">'+money(o.base)+'</td></tr>';
+  if(o.five){h+='<tr><td>Full inspection base</td><td class="n">'+money(o.full)+'</td></tr>';
+    h+='<tr><td>5-point adjustment ($0.10 &times; '+i.sf.toLocaleString("en-US")+' sf)</td><td class="n">&minus;'+money(o.disc)+'</td></tr>'}
+  h+='<tr><td>Base inspection'+(o.five?', 5-point':'')+' (suggested)</td><td class="n">'+money(o.base)+'</td></tr>';
   o.lines.forEach(function(l){h+='<tr><td>'+l.n+'</td><td class="n">'+rangeTxt(l.lo,l.hi)+'</td></tr>'});
   h+='<tr class="tot"><td>Suggested total</td><td class="n">'+money(o.total)+'</td></tr></table></div>';
   h+='<h2 style="margin-top:16px">Recommended crew and time</h2><div class="stats">';
@@ -250,7 +269,7 @@ function render(){
   h+='<div class="stat"><div class="k">Inspector-hours</div><div class="v">~'+o.ph.typ+'</div><div class="s">'+o.ph.lo+' to '+o.ph.hi+' total</div></div>';
   h+='</div>';
   h+='<p class="hint" style="margin-top:8px">Duration times inspectors equals inspector-hours. With '+(o.crew===2?3:2)+' inspectors instead, plan on about '+(o.crew===2?o.dur.three:o.dur.two)+' hrs.</p>';
-  h+='<h2 style="margin-top:16px">Price by method</h2><div class="stats">';
+  h+='<h2 style="margin-top:16px">Full inspection price by method</h2><div class="stats">';
   h+='<div class="stat"><div class="k">By square feet</div><div class="v">'+money(r25(o.a.typ))+'</div><div class="s">'+money(o.a.lo)+' to '+money(o.a.hi)+'</div></div>';
   h+='<div class="stat"><div class="k">By units</div><div class="v">'+(o.b?money(r25(o.b.typ)):"n/a")+'</div><div class="s">'+(o.b?money(o.b.lo)+' to '+money(o.b.hi):(i.type==="mf"?"enter units":"not used"))+'</div></div>';
   h+='</div>';
@@ -277,7 +296,7 @@ function renderComps(sf){
   });
   $("comps").innerHTML=h;
 }
-["sf","type","units","a_sewer","extra","a_radon","a_lead","a_mold","a_drone"].forEach(function(id){
+["scope","sf","type","units","a_sewer","extra","a_radon","a_lead","a_mold","a_drone"].forEach(function(id){
   $(id).addEventListener("input",render);$(id).addEventListener("change",render)});
 render();
 </script>
