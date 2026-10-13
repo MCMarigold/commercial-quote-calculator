@@ -225,9 +225,8 @@ function calc(i){
     var lab=function(h){return rh(Math.max(1,h-o.cut))};
     o.ph={a:o.ph.a,b:o.ph.b,typ:lab(o.ph.typ),lo:lab(o.ph.lo),hi:lab(o.ph.hi)};
     o.crew=Math.min(o.crew,o.ph.typ<=SOLO?1:o.ph.typ<=8?2:3);
-    o.alt=o.crew===2?1:2;
-  }else o.alt=o.crew===2?3:2;
-  o.dur={typ:rh(o.ph.typ/o.crew),lo:rh(o.ph.lo/o.crew),hi:rh(o.ph.hi/o.crew),alt:rh(o.ph.typ/o.alt)};
+  }
+  o.dur={typ:rh(o.ph.typ/o.crew),lo:rh(o.ph.lo/o.crew),hi:rh(o.ph.hi/o.crew)};
   if(i.sf<3000)o.warn.push("This is smaller than any full inspection on record (the smallest is 3,000 sf). Check the quote with Blake or Dan.");
   if(i.sf>8000)o.warn.push("This is larger than any full inspection with a usable rate (the largest is 8,000 sf). The only bigger job is Two Harbors, 35,000 sf of new construction at $0.17 per sf, 9 hours, 3 inspectors. Check the quote with Blake or Dan.");
   if(i.type==="mf"&&i.units>0&&(i.units<4||i.units>8))o.warn.push("Full inspections on record cover 4 to 8 units. The unit estimate is a stretch at "+i.units+" units.");
@@ -275,11 +274,11 @@ function render(){
   o.lines.forEach(function(l){h+='<tr><td>'+l.n+'</td><td class="n">'+rangeTxt(l.lo,l.hi)+'</td></tr>'});
   h+='<tr class="tot"><td>Suggested total</td><td class="n">'+money(o.total)+'</td></tr></table></div>';
   h+='<h2 style="margin-top:16px">Recommended crew and time</h2><div class="stats">';
+  h+='<div class="stat"><div class="k">Total inspector-hours</div><div class="v">~'+o.ph.typ+'</div><div class="s">'+o.ph.lo+' to '+o.ph.hi+' total</div></div>';
   h+='<div class="stat"><div class="k">Inspectors</div><div class="v">'+o.crew+'</div><div class="s">'+(o.five?'5-point: 1 up to 4.5 inspector-hrs, 2 up to 8, never more than full':o.crew===1?'4.5 inspector-hrs or less':o.crew===3?'8+ units or 13+ inspector-hrs':'all 5 jobs used 2 or 3')+'</div></div>';
   h+='<div class="stat"><div class="k">Duration on site</div><div class="v">~'+o.dur.typ+' hrs</div><div class="s">'+o.dur.lo+' to '+o.dur.hi+' hrs'+(o.five?'<br>full inspection: ~'+o.fullDur+' hrs':'')+'</div></div>';
-  h+='<div class="stat"><div class="k">Inspector-hours</div><div class="v">~'+o.ph.typ+'</div><div class="s">'+o.ph.lo+' to '+o.ph.hi+' total</div></div>';
   h+='</div>';
-  h+='<p class="hint" style="margin-top:8px">Duration times inspectors equals inspector-hours. With '+o.alt+' inspector'+(o.alt>1?'s':'')+' instead, plan on about '+o.dur.alt+' hrs.</p>';
+  h+='<p class="hint" style="margin-top:8px">Ways to split ~'+o.ph.typ+' inspector-hours: '+[1,2,3].map(function(n){var t=n+' inspector'+(n>1?'s':'')+', ~'+rh(o.ph.typ/n)+' hrs on site';return n===o.crew?'<b>'+t+' (recommended)</b>':t}).join(' &middot; ')+'</p>';
   h+='<h2 style="margin-top:16px">Full inspection price by method</h2><div class="stats">';
   h+='<div class="stat"><div class="k">By square feet</div><div class="v">'+money(r25(o.a.typ))+'</div><div class="s">'+money(o.a.lo)+' to '+money(o.a.hi)+'</div></div>';
   h+='<div class="stat"><div class="k">By units</div><div class="v">'+(o.b?money(r25(o.b.typ)):"n/a")+'</div><div class="s">'+(o.b?money(o.b.lo)+' to '+money(o.b.hi):(i.type==="mf"?"enter units":"not used"))+'</div></div>';
